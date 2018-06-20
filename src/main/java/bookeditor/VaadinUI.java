@@ -5,16 +5,13 @@ import com.vaadin.addon.pagination.PaginationChangeListener;
 import com.vaadin.addon.pagination.PaginationResource;
 import com.vaadin.annotations.VaadinServletConfiguration;
 import com.vaadin.data.Binder;
-import com.vaadin.data.ValidationException;
 import com.vaadin.data.converter.StringToBooleanConverter;
 import com.vaadin.data.converter.StringToIntegerConverter;
-import com.vaadin.data.converter.StringToLongConverter;
 import com.vaadin.data.validator.BeanValidator;
 import com.vaadin.server.Sizeable;
 import com.vaadin.server.VaadinServlet;
 import com.vaadin.shared.ui.ValueChangeMode;
 import com.vaadin.ui.*;
-import com.vaadin.ui.components.grid.ItemClickListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +21,6 @@ import com.vaadin.server.FontAwesome;
 import com.vaadin.server.VaadinRequest;
 import com.vaadin.spring.annotation.SpringUI;
 import org.springframework.data.domain.Pageable;
-import vaadin.scala.BeanItemContainer;
 
 import javax.servlet.annotation.WebServlet;
 import java.util.*;
@@ -41,6 +37,8 @@ public class VaadinUI extends UI {
     private final ComboBox filterByreadAlready;
     private AtomicReference<String> contentfilter = new AtomicReference<>();
     private final List<Book> checkbooklist = new LinkedList<>();
+    private Book currenteditedbookformgrid = new Book();
+    private Grid grid = new Grid();
     private final Button add;
     private final Button read;
     private final Button delete;
@@ -182,10 +180,17 @@ public class VaadinUI extends UI {
             //код добавления книги через редактор сетки с пустой книгой
 
 
-
             //возврат интерфейса в исходное состояние
 
                 });
+
+        //выбор объекта, по которому кликнули
+        grid.addItemClickListener(event -> {
+            currenteditedbookformgrid = (Book) event.getItem();
+            Notification.show(String.valueOf(currenteditedbookformgrid));
+        });
+
+
     }
 
     private HorizontalLayout workingspace() {//под добавление книги
@@ -193,15 +198,18 @@ public class VaadinUI extends UI {
         wspace.setSizeFull();
 
         checkbooklist.clear();
-        checkbooklist.add(new Book("","","","",0,false));
+
+        checkbooklist.add(new Book("","","","",10,false));
         final Grid gridworkingspace = createGrid(checkbooklist);
 
         gridworkingspace.getEditor().setEnabled(true);
 
         //тут надо добавлять книгу редактируя пустые поля в grid
+        //для gridworkingspace разрешить редактирование поля автор
 
         wspace.addComponent(gridworkingspace);
         wspace.setMargin(true);
+
 
         return wspace;
 
@@ -268,9 +276,9 @@ public class VaadinUI extends UI {
         final Page<Book> books = findAllwithfilter(0, limit);
         final long total = books.getTotalElements();
 
-        final Grid grid = createGrid(books.getContent());
+        grid = createGrid(books.getContent());
 
-        multiselect(grid);//множественный чекбокс его надо связывать с CRUD операциями (кроме добавления книги)
+        multiselect(grid);
 
         final Pagination pagination = createPagination(total, page, limit);
         pagination.addPageChangeListener(new PaginationChangeListener() {
@@ -312,6 +320,7 @@ public class VaadinUI extends UI {
 
     private Grid createGrid(List<Book> books) {
 
+        //внутренняя grid - можно назвать подругому на всякий
         final Grid<Book> grid = new Grid<>();
         grid.setItems(books);
         grid.setSizeFull();
@@ -334,10 +343,6 @@ public class VaadinUI extends UI {
                 .withConverter(new StringToBooleanConverter("Статус прочтения книги является логическим значением - true или false"))
                 .withValidator(new BeanValidator(Book.class, "ReadAlready"))
                 .bind(Book::getReadAlready, Book::setReadAlready)).setEditable(false);
-
-        //ReadAlready менять нельзя, но если для данной книги будет изменен любой параметр из доступных, то ReadAlready == false
-
-        //тут слушатель grid и сохранение bean
 
         return grid;
     }
