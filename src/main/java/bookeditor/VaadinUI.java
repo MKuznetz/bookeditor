@@ -21,14 +21,12 @@ import com.vaadin.server.FontAwesome;
 import com.vaadin.server.VaadinRequest;
 import com.vaadin.spring.annotation.SpringUI;
 import org.springframework.data.domain.Pageable;
-
 import javax.servlet.annotation.WebServlet;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 @SpringUI
 public class VaadinUI extends UI {
-
     private BookRepository repo;
     private final BookEditor editor;
     private final TextField filterByAuthor;
@@ -43,7 +41,6 @@ public class VaadinUI extends UI {
     private final Button read;
     private final Button delete;
     private static final Logger log = LoggerFactory.getLogger(VaadinUI.class);
-
     @Autowired
     public VaadinUI(BookRepository repo, BookEditor editor) {
         this.repo = repo;
@@ -56,22 +53,16 @@ public class VaadinUI extends UI {
         this.read = new Button("Прочитать", FontAwesome.EYE);
         this.delete = new Button("Удалить", FontAwesome.TRASH);
 }
-
     @Override
     protected void init(VaadinRequest request) {
-
-        //основной каркас интерфейса
         VerticalSplitPanel main = new VerticalSplitPanel();
-        //каркас верхней части интерфейса
         VerticalSplitPanel actions = new VerticalSplitPanel();
         main.setSizeFull();
         actions.setFirstComponent(filterAndbuttons());
-        //workingspace нам не нужно, пока не выбрали редактирование или добавление книги
         actions.setSplitPosition(100, Sizeable.UNITS_PERCENTAGE);//
         actions.setLocked(true);
-        main.setFirstComponent(actions);//15% экрана
-        main.setSecondComponent(jpaPagable());//85% экрана
-        //15% по вертикали от Sizeable части экрана хватит на фильтры и кнопки
+        main.setFirstComponent(actions);
+        main.setSecondComponent(jpaPagable());
         main.setSplitPosition(15, Sizeable.UNITS_PERCENTAGE);
         setContent(main);
         filterByAuthor.addValueChangeListener(event -> {
@@ -89,6 +80,10 @@ public class VaadinUI extends UI {
                 contentfilter.set(null);
                 main.setSecondComponent(jpaPagable());
             }
+            grid.addItemClickListener(gridevent -> {
+                currenteditedbookformgrid = (Book) gridevent.getItem();
+                Notification.show(String.valueOf(currenteditedbookformgrid));
+            });
         });
         filterByTitle.addValueChangeListener(event -> {
             if(!event.getValue().isEmpty()) {
@@ -105,6 +100,10 @@ public class VaadinUI extends UI {
                 contentfilter.set(null);
                 main.setSecondComponent(jpaPagable());
             }
+            grid.addItemClickListener(gridevent -> {
+                currenteditedbookformgrid = (Book) gridevent.getItem();
+                Notification.show(String.valueOf(currenteditedbookformgrid));
+            });
         });
         filterByPrintYear.addValueChangeListener(event -> {
             try {
@@ -127,6 +126,10 @@ public class VaadinUI extends UI {
                 Notification.show("Год издания введен некорректно. Пример: 2017. Повторите ввод.");
                 filterByPrintYear.setValue("");
             }
+            grid.addItemClickListener(gridevent -> {
+                currenteditedbookformgrid = (Book) gridevent.getItem();
+                Notification.show(String.valueOf(currenteditedbookformgrid));
+            });
         });
         filterByreadAlready.addValueChangeListener(event -> {
             if(event.getValue() != null) {
@@ -153,6 +156,10 @@ public class VaadinUI extends UI {
                 add.setEnabled(true);
                 main.setSecondComponent(jpaPagable());
             }
+            grid.addItemClickListener(gridevent -> {
+                currenteditedbookformgrid = (Book) gridevent.getItem();
+                Notification.show(String.valueOf(currenteditedbookformgrid));
+            });
         });
         read.addClickListener(clickEvent-> {
             if(!checkbooklist.isEmpty()) {
@@ -177,150 +184,89 @@ public class VaadinUI extends UI {
             main.setSplitPosition(100, Sizeable.UNITS_PERCENTAGE);
             main.getSecondComponent().setVisible(false);
 
-            //код добавления книги через редактор сетки с пустой книгой
+            //код добавления книги через редактор сетки с пустой книгой или посмотреть вариант добавления в основноую сетку toprow или upperrow
 
 
             //возврат интерфейса в исходное состояние
 
                 });
 
-        //выбор объекта, по которому кликнули
-        grid.addItemClickListener(event -> {
-            currenteditedbookformgrid = (Book) event.getItem();
+        grid.addItemClickListener(gridevent -> {
+            currenteditedbookformgrid = (Book) gridevent.getItem();
             Notification.show(String.valueOf(currenteditedbookformgrid));
         });
-
-
     }
-
-    private HorizontalLayout workingspace() {//под добавление книги
+    //workingspace может не понадобиться, сейчас он ничего особо не делает
+    private HorizontalLayout workingspace() {
         HorizontalLayout wspace = new HorizontalLayout();
         wspace.setSizeFull();
-
         checkbooklist.clear();
-
         checkbooklist.add(new Book("","","","",10,false));
         final Grid gridworkingspace = createGrid(checkbooklist);
-
         gridworkingspace.getEditor().setEnabled(true);
-
-        //тут надо добавлять книгу редактируя пустые поля в grid
-        //для gridworkingspace разрешить редактирование поля автор
-
+        //чето делаем тут
         wspace.addComponent(gridworkingspace);
         wspace.setMargin(true);
-
-
         return wspace;
-
     }
-
-    //----------фильтры и их методы---------------
-
     private HorizontalLayout filterAndbuttons() {
-
         HorizontalLayout allactions = new HorizontalLayout(filterByTitle, filterByAuthor, filterByPrintYear, filterByreadAlready,
                 read, add, delete);
-
         filterByAuthor.setPlaceholder("Поиск по автору");
         filterByAuthor.setDescription("Поиск книг по автору");
-        //LAZY - событие запускается, когда при редактировании текста происходит пауза.
-        //Длина паузы может быть изменена с помощью setValueChangeTimeout ().
         filterByAuthor.setValueChangeMode(ValueChangeMode.LAZY);
-
         filterByTitle.setPlaceholder("Поиск по названию");
         filterByTitle.setDescription("Поиск книг по названию");
         filterByTitle.setValueChangeMode(ValueChangeMode.LAZY);
-
         filterByPrintYear.setPlaceholder("Поиск по году издания");
         filterByPrintYear.setDescription("Поиск книг по году издания");
         filterByPrintYear.setValueChangeMode(ValueChangeMode.LAZY);
-
         filterByreadAlready.setPlaceholder("Поиск по статусу");
         filterByreadAlready.setDescription("Поиск книг по типу - прочитанные ранее или непрочитанные");
         filterByreadAlready.setItems("Прочитанные", "Непрочитанные");
-
         add.setDisableOnClick(true);
         add.setDescription("Добавление новой книги.");
-
         read.setEnabled(false);
         read.setDescription("Чтение книги. Если статус книги был <непрочитанная>, статус изменяется на <прочитанная>. " +
                 "Чтение доступно при выборе книги <флажок в чекбоксе> из списка книг. Читать можно сразу по несколько книг.");
-
         delete.setEnabled(false);
         delete.setDescription("Удаление книги. Удаление доступно при выборе книги <флажок в чекбоксе> из списка книг. " +
                 "Удалять можно сразу по несколько книг.");
-
         allactions.setMargin(true);
-
         return allactions;
     }
-
     private Page<Book> pageBooksAuthor(String filterText, Pageable pageable) {return repo.findByAuthorStartsWithIgnoreCase(filterText,pageable);}
-
     private Page<Book> pageBooksTitle(String filterText, Pageable pageable) {return repo.findByTitleStartsWithIgnoreCase(filterText,pageable);}
-
     private Page<Book> pageBooksPrintYear(int filter, Pageable pageable) {return repo.findByPrintYear(filter,pageable);}
-
     private Page<Book> pageBooksreadAlready(boolean filter, Pageable pageable) {return repo.findByreadAlready(filter,pageable);}
-
-    //---------------------------------------------
-
-    //--пейджинг в grid и соответствующие методы---
-
     private VerticalLayout jpaPagable() {
-
         final int page = 1;
-        final int limit = 10;//items per page
-
+        final int limit = 10;
         final Page<Book> books = findAllwithfilter(0, limit);
         final long total = books.getTotalElements();
-
         grid = createGrid(books.getContent());
-
         multiselect(grid);
-
         final Pagination pagination = createPagination(total, page, limit);
-        pagination.addPageChangeListener(new PaginationChangeListener() {
-            @Override
-            public void changed(PaginationResource event) {
-                log.debug("jpaPagable : {}", event.toString());
-                Page<Book> books = findAllwithfilter(event.pageIndex(), event.limit());
-                pagination.setTotalCount(books.getTotalElements());
-                grid.setItems(books.getContent());
-                grid.scrollToStart();
-            }
+        pagination.addPageChangeListener((PaginationChangeListener) event -> {
+            log.debug("jpaPagable : {}", event.toString());
+            Page<Book> books1 = findAllwithfilter(event.pageIndex(), event.limit());
+            pagination.setTotalCount(books1.getTotalElements());
+            grid.setItems(books1.getContent());
+            grid.scrollToStart();
         });
-
         final VerticalLayout layout = createContent(grid, pagination);
-
-        //layout.setSpacing(true);// отступы между компонентами лейаута
-        layout.setMargin(true);// внешние отступы лейауту
-
+        layout.setMargin(true);
         return layout;
     }
-
     private Page<Book> findAllwithfilter(int page, int size) {
-
             Pageable pageable = new PageRequest(page, size);
-
-            //одновременно два фильтра не сработают, тк остальные фильтры становятся не доступны setEnable(false)
-
             if(!filterByAuthor.getValue().isEmpty()) {return pageBooksAuthor(String.valueOf(contentfilter),pageable);}
-
             if(!filterByTitle.getValue().isEmpty()) {return pageBooksTitle(String.valueOf(contentfilter),pageable);}
-
             if(!filterByPrintYear.getValue().isEmpty()) {return pageBooksPrintYear(Integer.parseInt(String.valueOf(contentfilter)),pageable);}
-
             if(filterByreadAlready.getValue() != null) {return pageBooksreadAlready(Boolean.parseBoolean(String.valueOf(contentfilter)),pageable);}
-
             else {return repo.findAll(pageable);}
-
     }
-
     private Grid createGrid(List<Book> books) {
-
-        //внутренняя grid - можно назвать подругому на всякий
         final Grid<Book> grid = new Grid<>();
         grid.setItems(books);
         grid.setSizeFull();
@@ -343,25 +289,21 @@ public class VaadinUI extends UI {
                 .withConverter(new StringToBooleanConverter("Статус прочтения книги является логическим значением - true или false"))
                 .withValidator(new BeanValidator(Book.class, "ReadAlready"))
                 .bind(Book::getReadAlready, Book::setReadAlready)).setEditable(false);
-
         return grid;
     }
-
     private Pagination createPagination(long total, int page, int limit) {
             final PaginationResource paginationResource = PaginationResource.newBuilder().setTotal(total).setPage(page).setLimit(limit).build();
             final Pagination pagination = new Pagination(paginationResource);
             pagination.setItemsPerPage(10, 20, 50, 100);
             return pagination;
         }
-
     private VerticalLayout createContent(Grid grid, Pagination pagination) {
         final VerticalLayout layout = new VerticalLayout();
         layout.setSizeFull();
         layout.addComponents(grid, pagination);
-        layout.setExpandRatio(grid, 1f);// grid занимает все доступное свободное место в VerticalLayout
+        layout.setExpandRatio(grid, 1f);
         return layout;
     }
-
     private void multiselect(Grid grid){
         grid.setSelectionMode(Grid.SelectionMode.MULTI);
         grid.addSelectionListener(event -> {
@@ -371,10 +313,6 @@ public class VaadinUI extends UI {
             buttonsavailable();
         });
     }
-
-    //---------------------------------------------
-
-    //настройка доступности кнопок от состояния multiselect в grid
     private void buttonsavailable(){
         if(checkbooklist.size() > 0){
             add.setEnabled(false);
@@ -388,16 +326,12 @@ public class VaadinUI extends UI {
             checkbooklist.clear();
         }
     }
-
-    //блокировка фильтров при добавлении книги
     private void blockfilters(){
         filterByAuthor.setEnabled(false);
         filterByTitle.setEnabled(false);
         filterByPrintYear.setEnabled(false);
         filterByreadAlready.setEnabled(false);
     }
-
-    //начальное состояние фильтров и кнопок при сбросе чекбокса
     private void initialstate(){
         filterByAuthor.clear();
         filterByTitle.clear();
@@ -406,11 +340,8 @@ public class VaadinUI extends UI {
         read.setEnabled(false);
         delete.setEnabled(false);
     }
-
     @WebServlet(urlPatterns = "/*", name = "MyUIServlet", asyncSupported = true)
     @VaadinServletConfiguration(ui = VaadinUI.class, productionMode = false)
-
     public static class MyUIServlet extends VaadinServlet {
     }
-
 }
